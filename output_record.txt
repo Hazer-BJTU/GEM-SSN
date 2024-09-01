@@ -1,0 +1,7 @@
+(train loss, train acc, valid acc, test acc)
+case1: (0.001, 0.824, 0.760, 0.765)
+case2: (0.002, 0.797, 0.798, 0.824)
+case3: (0.001, 0.840, 0.801, 0.857)
+case4: (0.001, 0.835, 0.837, 0.849)
+case5: (0.001, 0.851, 0.792, 0.778)
+average loss: 0.001, train acc: 0.830, valid acc: 0.798, test acc: 0.814
