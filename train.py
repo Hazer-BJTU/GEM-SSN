@@ -108,9 +108,13 @@ def write_results(results):
         sys.stdout = original_stdout
 
 
+standard_network = SeqSleepNet()
+standard_network.apply(init_weight)
+
+
 class CLNetwork:
     def __init__(self, args):
-        self.net = SeqSleepNet()
+        self.net = copy.deepcopy(standard_network)
         self.net.apply(init_weight)
         self.memorys = []
         self.buffer_size = args.buffer_size
@@ -118,7 +122,7 @@ class CLNetwork:
         self.memory_buffer_label = torch.zeros((args.buffer_size, args.window_size), dtype=torch.int64)
         self.sample_num = 0
         self.optimizer = torch.optim.Adam(self.net.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-        self.loss = nn.CrossEntropyLoss()
+        self.loss = nn.CrossEntropyLoss(reduction='none')
         self.best_train_loss, self.best_train_acc, self.best_valid_acc = 0, 0, 0
         self.train_loss, self.train_acc, self.num_samples = 0, 0, 0
         self.best_net = copy.deepcopy(self.net)
@@ -147,14 +151,26 @@ class CLNetwork:
         self.train_loss, self.train_acc, self.num_samples = 0, 0, 0
         self.net.train()
 
-    def observe(self, X_org, y_org, first_time=False):
+    def observe(self, X_org, y_org, args, first_time=False):
         if first_time:
             self.reservoir_sampling(X_org, y_org)
         X, y = X_org.to(self.device), y_org.to(self.device)
         self.optimizer.zero_grad()
         y_hat = self.net(X)
         y = y.view(-1)
-        L = self.loss(y_hat, y)
+        L_current = torch.sum(self.loss(y_hat, y))
+        L = L_current / X.shape[0]
+        if args.replay_mode == 'naive':
+            B = 0
+            for item in self.memorys:
+                B += item[0].shape[0]
+            print(f'naively replay on {len(self.memorys)} tasks and {B} examples...')
+            for item in self.memorys:
+                Xr, yr = item[0].to(self.device), item[1].to(self.device)
+                yr_hat = self.net(Xr)
+                yr = yr.view(-1)
+                L_replay = torch.sum(self.loss(yr_hat, yr))
+                L = L + L_replay / B
         L.backward()
         nn.utils.clip_grad_norm_(self.net.parameters(), max_norm=20, norm_type=2)
         self.optimizer.step()
@@ -181,12 +197,6 @@ class CLNetwork:
     def test(self, test_iter):
         return evaluate(self.best_net, test_iter, self.device)
 
-    def naive_replay(self):
-        self.net.train()
-        print(f'naively replay on {len(self.memorys)} tasks...')
-        for item in self.memorys:
-            self.observe(item[0], item[1], False)
-
 
 def train_cl(args, continuum):
     clnetwork = CLNetwork(args)
@@ -205,14 +215,12 @@ def train_cl(args, continuum):
         print(f'start task: {continuum[i]}')
         clnetwork.start_task()
         for epoch in range(args.num_epochs):
-            if args.replay_mode == 'naive':
-                clnetwork.naive_replay()
             clnetwork.start_epoch()
             for X_org, y_org in train_iter:
                 if epoch == 0:
-                    clnetwork.observe(X_org, y_org, True)
+                    clnetwork.observe(X_org, y_org, args, True)
                 else:
-                    clnetwork.observe(X_org, y_org, False)
+                    clnetwork.observe(X_org, y_org, args, False)
             clnetwork.end_epoch(valid_iter)
         clnetwork.end_task()
         for j in range(continuum.tasks_num):
