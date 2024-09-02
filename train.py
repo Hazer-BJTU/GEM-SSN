@@ -1,5 +1,5 @@
 import torch
-from models import SeqSleepNet
+from models import SeqSleepNet, TinySeqSleepNet
 from models import init_weight
 from load_data import load_data_isrucs3
 from load_data import Continuum
@@ -110,11 +110,18 @@ def write_results(results):
 
 standard_network = SeqSleepNet()
 standard_network.apply(init_weight)
+tiny_network = TinySeqSleepNet()
+tiny_network.apply(init_weight)
 
 
 class CLNetwork:
     def __init__(self, args):
-        self.net = copy.deepcopy(standard_network)
+        if args.model_volume == 'standard':
+            print('using standard network.')
+            self.net = copy.deepcopy(standard_network)
+        elif args.model_volume == 'tiny':
+            print('using tiny network.')
+            self.net = copy.deepcopy(tiny_network)
         self.net.apply(init_weight)
         self.memorys = []
         self.buffer_size = args.buffer_size
@@ -274,6 +281,7 @@ if __name__ == '__main__':
     parser.add_argument('--buffer_size', type=int, nargs='?', default=128)
     parser.add_argument('--phase', type=int, nargs='?', default=1)
     parser.add_argument('--replay_mode', type=str, nargs='?', default='naive')
+    parser.add_argument('--model_volume', type=str, nargs='?', default='standard')
     args = parser.parse_args()
     if args.phase == 0:
         results = k_fold_train(args)

@@ -125,6 +125,30 @@ class SeqSleepNet(nn.Module):
         return X
 
 
+class TinySeqSleepNet(nn.Module):
+    def __init__(self, **kwargs):
+        super(TinySeqSleepNet, self).__init__(**kwargs)
+        self.filter_banks = FilterBanks(129, 16, 32, 48)
+        self.dropout1 = nn.Dropout(0.25)
+        self.short_term_gru = ShortTermGRU(32, 16, 2, 0.25)
+        self.attention = Attention(32)
+        self.long_term_gru = LongTermGRU(32, 16, 2, 0.25)
+        self.classifier = nn.Sequential(
+            nn.Linear(32, 64),
+            nn.ReLU(), nn.Dropout(0.25),
+            nn.Linear(64, 5)
+        )
+
+    def forward(self, X):
+        X = self.filter_banks(X)
+        X = self.dropout1(X)
+        X = self.short_term_gru(X)
+        X = self.attention(X)
+        X = self.long_term_gru(X)
+        X = self.classifier(X)
+        return X
+
+
 if __name__ == '__main__':
     X = torch.zeros(5, 20, 129, 48)
     net = SeqSleepNet()
