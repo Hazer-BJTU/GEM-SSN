@@ -122,7 +122,6 @@ class CLNetwork:
         elif args.model_volume == 'tiny':
             print('using tiny network.')
             self.net = copy.deepcopy(tiny_network)
-        self.net.apply(init_weight)
         self.memorys = []
         self.buffer_size = args.buffer_size
         self.memory_buffer_data = torch.zeros((args.buffer_size, args.window_size, 129, 48), dtype=torch.float32)
@@ -278,7 +277,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, nargs='?', default=1e-3)
     parser.add_argument('--weight_decay', type=float, nargs='?', default=1e-5)
     parser.add_argument('--channel', type=str, nargs='?', default='F3_A2')
-    parser.add_argument('--buffer_size', type=int, nargs='?', default=128)
+    parser.add_argument('--buffer_size', type=int, nargs='?', default=64)
     parser.add_argument('--phase', type=int, nargs='?', default=1)
     parser.add_argument('--replay_mode', type=str, nargs='?', default='naive')
     parser.add_argument('--model_volume', type=str, nargs='?', default='standard')

@@ -11,9 +11,8 @@ class FilterBanks(nn.Module):
         self.features = features
         self.network = nn.Sequential(
             nn.Conv1d(input_channels, hiddens, kernel_size=1, stride=1, padding=0),
-            nn.BatchNorm1d(hiddens), nn.ReLU(),
+            nn.ReLU(),
             nn.Conv1d(hiddens, output_channels, kernel_size=1, stride=1, padding=0),
-            nn.BatchNorm1d(output_channels), nn.ReLU()
         )
 
     def forward(self, X):
