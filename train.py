@@ -33,7 +33,9 @@ def evaluate(net, dataloader, device):
 def train_procedure(net, train_iter, valid_iter, num_epochs, lr, weight_decay, device):
     net.to(device)
     optimizer = torch.optim.Adam(net.parameters(), lr=lr, weight_decay=weight_decay)
+    '''
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, num_epochs // 6, 0.6)
+    '''
     loss = nn.CrossEntropyLoss()
     best_train_loss, best_train_acc, best_valid_acc, best_net = 0, 0, 0, None
     for epoch in range(num_epochs):
@@ -54,7 +56,9 @@ def train_procedure(net, train_iter, valid_iter, num_epochs, lr, weight_decay, d
         train_loss /= total
         train_acc /= total
         valid_acc = evaluate(net, valid_iter, device)
+        '''
         scheduler.step()
+        '''
         print(f'epoch: {epoch + 1}, train loss: {train_loss:.3f}, '
               f'train acc: {train_acc:.3f}, valid acc: {valid_acc:.3f}')
         if valid_acc > best_valid_acc:
@@ -116,6 +120,7 @@ tiny_network.apply(init_weight)
 
 class CLNetwork:
     def __init__(self, args):
+        self.args = args
         if args.model_volume == 'standard':
             print('using standard network.')
             self.net = copy.deepcopy(standard_network)
@@ -132,9 +137,15 @@ class CLNetwork:
         self.best_train_loss, self.best_train_acc, self.best_valid_acc = 0, 0, 0
         self.train_loss, self.train_acc, self.num_samples = 0, 0, 0
         self.best_net = copy.deepcopy(self.net)
+        self.best_net_memory = []
         self.device = torch.device(f'cuda:{args.cuda_idx}')
         self.net.to(self.device)
         self.epoch = 0
+        '''
+        EWC parameters:
+        '''
+        self.fisher = []
+        self.fisher_memory = []
 
     def reservoir_sampling(self, X_org, y_org):
         for i in range(X_org.shape[0]):
@@ -150,14 +161,22 @@ class CLNetwork:
 
     def start_task(self):
         self.epoch = 0
-        self.best_train_loss, self.best_train_acc, self.best_valid_acc = 0, 0, 0
         self.sample_num = 0
+        self.best_net = copy.deepcopy(self.net)
+        self.best_train_loss, self.best_train_acc, self.best_valid_acc = 0, 0, 0
+        '''
+        initialize EWC parameters
+        '''
+        if args.replay_mode == 'ewc':
+            self.fisher = []
+            for param in self.net.parameters():
+                self.fisher.append(torch.zeros(param.data.shape, device=self.device, requires_grad=False))
 
     def start_epoch(self):
         self.train_loss, self.train_acc, self.num_samples = 0, 0, 0
         self.net.train()
 
-    def observe(self, X_org, y_org, args, first_time=False):
+    def observe(self, X_org, y_org, first_time=False):
         if first_time:
             self.reservoir_sampling(X_org, y_org)
         X, y = X_org.to(self.device), y_org.to(self.device)
@@ -166,7 +185,10 @@ class CLNetwork:
         y = y.view(-1)
         L_current = torch.sum(self.loss(y_hat, y))
         L = L_current / X.shape[0]
-        if args.replay_mode == 'naive':
+        '''
+        implement replay methods (regularization)
+        '''
+        if self.args.replay_mode == 'naive':
             B = 0
             for item in self.memorys:
                 B += item[0].shape[0]
@@ -177,8 +199,26 @@ class CLNetwork:
                 yr = yr.view(-1)
                 L_replay = torch.sum(self.loss(yr_hat, yr))
                 L = L + L_replay / B
+        elif self.args.replay_mode == 'ewc':
+            print(f'ewc regularization on {len(self.best_net_memory)} tasks...')
+            for i in range(len(self.best_net_memory)):
+                param_idx = 0
+                for param, old_param in zip(self.net.parameters(), self.best_net_memory[i].parameters()):
+                    L_regular = torch.sum((param - old_param.detach()).pow(2) * self.fisher_memory[i][param_idx])
+                    param_idx += 1
+                    L = L + L_regular * self.args.ewc_coef
         L.backward()
         nn.utils.clip_grad_norm_(self.net.parameters(), max_norm=20, norm_type=2)
+        '''
+        EWC calculate fisher information matrix diagonal
+        '''
+        if self.args.replay_mode == 'ewc':
+            param_idx = 0
+            print(f'calculating FIM...')
+            for param in self.net.parameters():
+                if param.grad is not None:
+                    self.fisher[param_idx] += param.grad.pow(2) * X.shape[0]
+                param_idx += 1
         self.optimizer.step()
         self.train_loss += L
         self.train_acc += correct(y_hat, y)
@@ -199,6 +239,16 @@ class CLNetwork:
 
     def end_task(self):
         self.memorys.append((self.memory_buffer_data.clone(), self.memory_buffer_label.clone()))
+        self.best_net_memory.append(self.best_net)
+        '''
+        store the fisher information matrix diagonal
+        '''
+        if self.args.replay_mode == 'ewc':
+            self.fisher_memory.append(self.fisher)
+            '''
+            print('FIM')
+            print(self.fisher)
+            '''
 
     def test(self, test_iter):
         return evaluate(self.best_net, test_iter, self.device)
@@ -224,9 +274,9 @@ def train_cl(args, continuum):
             clnetwork.start_epoch()
             for X_org, y_org in train_iter:
                 if epoch == 0:
-                    clnetwork.observe(X_org, y_org, args, True)
+                    clnetwork.observe(X_org, y_org, True)
                 else:
-                    clnetwork.observe(X_org, y_org, args, False)
+                    clnetwork.observe(X_org, y_org, False)
             clnetwork.end_epoch(valid_iter)
         clnetwork.end_task()
         for j in range(continuum.tasks_num):
@@ -281,6 +331,7 @@ if __name__ == '__main__':
     parser.add_argument('--phase', type=int, nargs='?', default=1)
     parser.add_argument('--replay_mode', type=str, nargs='?', default='naive')
     parser.add_argument('--model_volume', type=str, nargs='?', default='standard')
+    parser.add_argument('--ewc_coef', type=float, nargs='?', default=1e-3)
     args = parser.parse_args()
     if args.phase == 0:
         results = k_fold_train(args)
@@ -289,6 +340,17 @@ if __name__ == '__main__':
         continuum = Continuum()
         R = train_cl(args, continuum)
         write_format(R, continuum, 'cl_output_replay.txt')
+        args.replay_mode = 'none'
+        R = train_cl(args, continuum)
+        write_format(R, continuum, 'cl_output_none_replay.txt')
+    elif args.phase == 2:
+        continuum = Continuum()
+        args.replay_mode = 'ewc'
+        R = train_cl(args, continuum)
+        write_format(R, continuum, 'cl_output_replay_ewc.txt')
+        args.replay_mode = 'naive'
+        R = train_cl(args, continuum)
+        write_format(R, continuum, 'cl_output_replay_naive.txt')
         args.replay_mode = 'none'
         R = train_cl(args, continuum)
         write_format(R, continuum, 'cl_output_none_replay.txt')
