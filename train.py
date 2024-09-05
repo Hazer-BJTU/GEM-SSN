@@ -8,6 +8,9 @@ import torch.nn as nn
 import copy
 import random
 import sys
+from clops import standard_network
+from clops import tiny_network
+from clops import CLNetworkClops
 
 
 def correct(y_hat, y):
@@ -33,9 +36,7 @@ def evaluate(net, dataloader, device):
 def train_procedure(net, train_iter, valid_iter, num_epochs, lr, weight_decay, device):
     net.to(device)
     optimizer = torch.optim.Adam(net.parameters(), lr=lr, weight_decay=weight_decay)
-    '''
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, num_epochs // 6, 0.6)
-    '''
     loss = nn.CrossEntropyLoss()
     best_train_loss, best_train_acc, best_valid_acc, best_net = 0, 0, 0, None
     for epoch in range(num_epochs):
@@ -56,9 +57,7 @@ def train_procedure(net, train_iter, valid_iter, num_epochs, lr, weight_decay, d
         train_loss /= total
         train_acc /= total
         valid_acc = evaluate(net, valid_iter, device)
-        '''
         scheduler.step()
-        '''
         print(f'epoch: {epoch + 1}, train loss: {train_loss:.3f}, '
               f'train acc: {train_acc:.3f}, valid acc: {valid_acc:.3f}')
         if valid_acc > best_valid_acc:
@@ -110,12 +109,6 @@ def write_results(results):
         print(f'average loss: {train_loss / 5:.3f}, train acc: {train_acc / 5:.3f}, '
               f'valid acc: {valid_acc / 5:.3f}, test acc: {test_acc / 5:.3f}')
         sys.stdout = original_stdout
-
-
-standard_network = SeqSleepNet()
-standard_network.apply(init_weight)
-tiny_network = TinySeqSleepNet()
-tiny_network.apply(init_weight)
 
 
 class CLNetwork:
@@ -255,7 +248,10 @@ class CLNetwork:
 
 
 def train_cl(args, continuum):
-    clnetwork = CLNetwork(args)
+    if args.replay_mode == 'clops':
+        clnetwork = CLNetworkClops(args)
+    else:
+        clnetwork = CLNetwork(args)
     test_iters = []
     for i in range(continuum.tasks_num):
         test_iters.append(

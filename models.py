@@ -151,12 +151,12 @@ class TinySeqSleepNet(nn.Module):
 
 
 class SeqSleepNetClops(nn.Module):
-    def __init__(self, seqsleepnet, **kwargs):
+    def __init__(self, seqsleepnet, batch_size, **kwargs):
         super(SeqSleepNetClops, self).__init__(**kwargs)
         self.seqsleepnet = seqsleepnet
-        self.beta = nn.Parameter(torch.zeros(320))
+        self.beta = nn.Parameter(torch.zeros(batch_size))
 
-    def forword(self, X):
+    def forward(self, X):
         return self.seqsleepnet(X)
 
     def get_beta(self):
