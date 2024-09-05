@@ -117,7 +117,7 @@ class CLNetworkClops:
             lst = []
             for i in range(S.shape[0]):
                 lst.append((S[i].item(), i))
-            lst.sort(key=lambda x: x[0])
+            lst.sort(key=lambda x: -x[0])
             for i in range(min(len(lst), self.args.clops_ratio)):
                 self.task_memory.append([0, torch.unsqueeze(X_org[lst[i][1]].clone(), dim=0),
                                          torch.unsqueeze(y_org[lst[i][1]].clone(), dim=0)])
