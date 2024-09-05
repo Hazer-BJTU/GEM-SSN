@@ -6,18 +6,17 @@ import torch
 import torch.nn as nn
 
 
+class Model(nn.Module):
+    def __init__(self, **kwargs):
+        super(Model, self).__init__(**kwargs)
+        self.param = nn.Parameter(torch.randn(5))
+        self.c = torch.zeros(5)
+
+    def clear(self):
+        for name, param in self.named_parameters():
+            if name == 'param':
+                param.data *= self.c
+
+
 if __name__ == '__main__':
-    '''
-    g = random.normal(loc=0.0, scale=1.0, size=2064)
-    G = random.normal(loc=0.0, scale=1.0, size=(10, 2064))
-    H = np.eye(2064)
-    f = g
-    A = G.T
-    b = np.zeros(10)
-    x = quadprog.solve_qp(H, f, A, b)
-    print(x[0])
-    '''
-    net = SeqSleepNet()
-    for param in net.parameters():
-        print(param.detach())
-        break
+    pass

@@ -249,6 +249,7 @@ class CLNetwork:
 
 def train_cl(args, continuum):
     if args.replay_mode == 'clops':
+        args.num_epochs = args.num_epochs // args.mc_epochs
         clnetwork = CLNetworkClops(args)
     else:
         clnetwork = CLNetwork(args)
@@ -328,6 +329,8 @@ if __name__ == '__main__':
     parser.add_argument('--replay_mode', type=str, nargs='?', default='naive')
     parser.add_argument('--model_volume', type=str, nargs='?', default='standard')
     parser.add_argument('--ewc_coef', type=float, nargs='?', default=1e-2)
+    parser.add_argument('--mc_epochs', type=int, nargs='?', default=6)
+    parser.add_argument('--clops_ratio', type=int, nargs='?', default=3)
     args = parser.parse_args()
     if args.phase == 0:
         results = k_fold_train(args)
@@ -341,6 +344,9 @@ if __name__ == '__main__':
         write_format(R, continuum, 'cl_output_none_replay.txt')
     elif args.phase == 2:
         continuum = Continuum()
+        args.replay_mode = 'clops'
+        R = train_cl(args, continuum)
+        write_format(R, continuum, 'cl_output_replay_clops.txt')
         args.replay_mode = 'ewc'
         R = train_cl(args, continuum)
         write_format(R, continuum, 'cl_output_replay_ewc.txt')

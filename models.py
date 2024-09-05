@@ -155,16 +155,29 @@ class SeqSleepNetClops(nn.Module):
         super(SeqSleepNetClops, self).__init__(**kwargs)
         self.seqsleepnet = seqsleepnet
         self.beta = nn.Parameter(torch.zeros(batch_size))
+        self.softmax = nn.Softmax(dim=0)
 
     def forward(self, X):
         return self.seqsleepnet(X)
 
     def get_beta(self):
-        return self.beta
+        return self.softmax(self.beta)
+
+    def clear_beta(self):
+        for name, param in self.named_parameters():
+            if name == 'beta':
+                param.data.zero_()
 
 
 if __name__ == '__main__':
     seqsleepnet = SeqSleepNet()
     seqsleepnet.apply(init_weight)
     net = SeqSleepNetClops(copy.deepcopy(seqsleepnet), 32)
-    print(net.state_dict())
+    optimizer = torch.optim.Adam(net.parameters(), lr=0.1)
+    X = torch.randn(28)
+    Z = torch.sum(net.get_beta()[0:28] * X)
+    Z.backward()
+    optimizer.step()
+    print(net.get_beta())
+    net.clear_beta()
+    print(net.get_beta())
