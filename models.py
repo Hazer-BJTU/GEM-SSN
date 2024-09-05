@@ -166,5 +166,5 @@ class SeqSleepNetClops(nn.Module):
 if __name__ == '__main__':
     seqsleepnet = SeqSleepNet()
     seqsleepnet.apply(init_weight)
-    net = SeqSleepNetClops(copy.deepcopy(seqsleepnet))
+    net = SeqSleepNetClops(copy.deepcopy(seqsleepnet), 32)
     print(net.state_dict())
