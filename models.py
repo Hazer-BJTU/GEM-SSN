@@ -1,3 +1,5 @@
+import copy
+
 import torch
 import torch.nn as nn
 
@@ -148,10 +150,21 @@ class TinySeqSleepNet(nn.Module):
         return X
 
 
+class SeqSleepNetClops(nn.Module):
+    def __init__(self, seqsleepnet, **kwargs):
+        super(SeqSleepNetClops, self).__init__(**kwargs)
+        self.seqsleepnet = seqsleepnet
+        self.beta = nn.Parameter(torch.zeros(320))
+
+    def forword(self, X):
+        return self.seqsleepnet(X)
+
+    def get_beta(self):
+        return self.beta
+
+
 if __name__ == '__main__':
-    X = torch.zeros(5, 20, 129, 48)
-    net = SeqSleepNet()
-    net.apply(init_weight)
-    Y = net(X)
-    print(X.shape)
-    print(Y.shape)
+    seqsleepnet = SeqSleepNet()
+    seqsleepnet.apply(init_weight)
+    net = SeqSleepNetClops(copy.deepcopy(seqsleepnet))
+    print(net.state_dict())

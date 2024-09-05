@@ -331,7 +331,7 @@ if __name__ == '__main__':
     parser.add_argument('--phase', type=int, nargs='?', default=1)
     parser.add_argument('--replay_mode', type=str, nargs='?', default='naive')
     parser.add_argument('--model_volume', type=str, nargs='?', default='standard')
-    parser.add_argument('--ewc_coef', type=float, nargs='?', default=1e-3)
+    parser.add_argument('--ewc_coef', type=float, nargs='?', default=1e-2)
     args = parser.parse_args()
     if args.phase == 0:
         results = k_fold_train(args)
