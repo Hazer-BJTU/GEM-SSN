@@ -72,10 +72,10 @@ def k_fold_train(args):
     mapping_list = [i for i in range(1, 11)]
     random.shuffle(mapping_list)
     results = []
-    for i in range(5):
+    for i in range(10):
         train_list = [j for j in range(1, 11)]
-        valid_idx = mapping_list[2 * i]
-        test_idx = mapping_list[2 * i + 1]
+        valid_idx = mapping_list[(i + 1) % 10]
+        test_idx = mapping_list[i]
         train_list.remove(valid_idx)
         train_list.remove(test_idx)
         print(f'train idx: {train_list}, valid idx: {valid_idx}, test idx: {test_idx}')
@@ -317,10 +317,10 @@ def write_format(R, continuum, filepath='cl_output_record.txt'):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='train procedure')
     parser.add_argument('--cuda_idx', type=int, nargs='?', default=0)
-    parser.add_argument('--num_epochs', type=int, nargs='?', default=30)
+    parser.add_argument('--num_epochs', type=int, nargs='?', default=60)
     parser.add_argument('--batch_size', type=int, nargs='?', default=32)
     parser.add_argument('--window_size', type=int, nargs='?', default=10)
-    parser.add_argument('--lr', type=float, nargs='?', default=1e-3)
+    parser.add_argument('--lr', type=float, nargs='?', default=1e-4)
     parser.add_argument('--weight_decay', type=float, nargs='?', default=1e-5)
     parser.add_argument('--channel', type=str, nargs='?', default='F3_A2')
     parser.add_argument('--buffer_size', type=int, nargs='?', default=64)
