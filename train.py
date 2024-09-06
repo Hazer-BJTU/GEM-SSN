@@ -317,7 +317,7 @@ def write_format(R, continuum, filepath='cl_output_record.txt'):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='train procedure')
     parser.add_argument('--cuda_idx', type=int, nargs='?', default=0)
-    parser.add_argument('--num_epochs', type=int, nargs='?', default=60)
+    parser.add_argument('--num_epochs', type=int, nargs='?', default=100)
     parser.add_argument('--batch_size', type=int, nargs='?', default=32)
     parser.add_argument('--window_size', type=int, nargs='?', default=10)
     parser.add_argument('--lr', type=float, nargs='?', default=1e-4)
@@ -327,7 +327,7 @@ if __name__ == '__main__':
     parser.add_argument('--phase', type=int, nargs='?', default=1)
     parser.add_argument('--replay_mode', type=str, nargs='?', default='naive')
     parser.add_argument('--model_volume', type=str, nargs='?', default='standard')
-    parser.add_argument('--ewc_coef', type=float, nargs='?', default=1e-2)
+    parser.add_argument('--ewc_coef', type=float, nargs='?', default=1e-3)
     parser.add_argument('--mc_epochs', type=int, nargs='?', default=10)
     parser.add_argument('--clops_ratio', type=int, nargs='?', default=3)
     args = parser.parse_args()
@@ -344,11 +344,11 @@ if __name__ == '__main__':
     elif args.phase == 2:
         continuum = Continuum()
         args.replay_mode = 'clops'
-        args.num_epochs = args.num_epochs // 3
+        args.num_epochs = args.num_epochs // 5
         R = train_cl(args, continuum)
         write_format(R, continuum, 'cl_output_replay_clops.txt')
         args.replay_mode = 'ewc'
-        args.num_epochs = args.num_epochs * 3
+        args.num_epochs = args.num_epochs * 5
         R = train_cl(args, continuum)
         write_format(R, continuum, 'cl_output_replay_ewc.txt')
         args.replay_mode = 'naive'
@@ -357,4 +357,3 @@ if __name__ == '__main__':
         args.replay_mode = 'none'
         R = train_cl(args, continuum)
         write_format(R, continuum, 'cl_output_none_replay.txt')
-    
