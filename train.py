@@ -249,7 +249,6 @@ class CLNetwork:
 
 def train_cl(args, continuum):
     if args.replay_mode == 'clops':
-        args.num_epochs = args.num_epochs // 3
         clnetwork = CLNetworkClops(args)
     else:
         clnetwork = CLNetwork(args)
@@ -345,9 +344,11 @@ if __name__ == '__main__':
     elif args.phase == 2:
         continuum = Continuum()
         args.replay_mode = 'clops'
+        args.num_epochs = args.num_epochs // 3
         R = train_cl(args, continuum)
         write_format(R, continuum, 'cl_output_replay_clops.txt')
         args.replay_mode = 'ewc'
+        args.num_epochs = args.num_epochs * 3
         R = train_cl(args, continuum)
         write_format(R, continuum, 'cl_output_replay_ewc.txt')
         args.replay_mode = 'naive'
