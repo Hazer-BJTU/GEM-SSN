@@ -117,7 +117,7 @@ class CLNetworkClops:
             lst = []
             for i in range(S.shape[0]):
                 lst.append((S[i].item(), i))
-            lst.sort(key=lambda x: x[0])
+            lst.sort(key=lambda x: -x[0])
             for i in range(min(len(lst), self.args.clops_ratio)):
                 self.task_memory.append([0, torch.unsqueeze(X_org[lst[i][1]].clone(), dim=0),
                                          torch.unsqueeze(y_org[lst[i][1]].clone(), dim=0)])
@@ -146,24 +146,20 @@ class CLNetworkClops:
         print('calculating example perplexity...')
         with torch.no_grad():
             for i in range(len(self.task_memory)):
-                self.net.eval()
+                self.net.train()
+                H1 = 0
                 y_sum = torch.zeros((10, 5), requires_grad=False, device=self.device)
                 for mc_epoch in range(self.args.mc_epochs):
                     X = self.task_memory[i][1].to(self.device)
                     y_hat = softmax(self.net(X))
                     y_sum += y_hat
-                y_sum = torch.sum(y_sum, dim=0) / (10 * self.args.mc_epochs)
-                H0 = np.array(y_sum.cpu())
-                self.task_memory[i][0] = -np.sum(H0 * np.log2(H0))
-                self.net.train()
-                H1 = 0
-                for mc_epoch in range(self.args.mc_epochs):
-                    X = self.task_memory[i][1].to(self.device)
-                    y_hat = softmax(self.net(X))
                     y_h = np.array(y_hat.cpu())
                     H1 += -np.sum(y_h * np.log2(y_h))
                 H1 /= (10 * self.args.mc_epochs)
-                self.task_memory[i][0] -= H1
+                y_sum = torch.sum(y_sum, dim=0) / (10 * self.args.mc_epochs)
+                H0 = np.array(y_sum.cpu())
+                H0 = -np.sum(H0 * np.log2(H0))
+                self.task_memory[i][0] = H0 - H1
             self.task_memory.sort(key=lambda x: -x[0])
             '''
             for item in self.task_memory:
