@@ -46,15 +46,18 @@ default_tasks_list = ['F3_A2', 'F4_A1', 'O1_A2', 'O2_A1', 'LOC_A2', 'ROC_A1']
 
 
 class Continuum:
-    def __init__(self, tasks_list=None):
-        self.train_list = [i for i in range(1, 11)]
-        random.shuffle(self.train_list)
-        self.valid_idx, self.test_idx = self.train_list[0], self.train_list[1]
+    def __init__(self, tasks_list=None, test_idx=None):
+        if test_idx is None:
+            self.train_list = [i for i in range(1, 11)]
+            random.shuffle(self.train_list)
+            self.valid_idx, self.test_idx = self.train_list[0], self.train_list[1]
+        else:
+            self.train_list = [i for i in range(1, 11)]
+            self.test_idx = test_idx
+            self.valid_idx = self.test_idx % 10 + 1
         self.train_list.remove(self.valid_idx)
         self.train_list.remove(self.test_idx)
-        '''
         print(f'valid idx: {self.valid_idx}, test idx: {self.test_idx}, train list: {self.train_list}')
-        '''
         if tasks_list is None:
             self.tasks_list = default_tasks_list
         else:

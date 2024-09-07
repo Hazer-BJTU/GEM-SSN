@@ -60,7 +60,7 @@ def train_procedure(net, train_iter, valid_iter, num_epochs, lr, weight_decay, d
         scheduler.step()
         print(f'epoch: {epoch + 1}, train loss: {train_loss:.3f}, '
               f'train acc: {train_acc:.3f}, valid acc: {valid_acc:.3f}')
-        if valid_acc > best_valid_acc:
+        if valid_acc > best_valid_acc and epoch >= num_epochs // 2:
             best_train_loss = train_loss
             best_train_acc = train_acc
             best_valid_acc = valid_acc
@@ -106,15 +106,19 @@ def write_results(results):
             valid_acc += item[2]
             test_acc += item[3]
             cnt += 1
-        print(f'average loss: {train_loss / 5:.3f}, train acc: {train_acc / 5:.3f}, '
-              f'valid acc: {valid_acc / 5:.3f}, test acc: {test_acc / 5:.3f}')
+        print(f'average loss: {train_loss / 10:.3f}, train acc: {train_acc / 10:.3f}, '
+              f'valid acc: {valid_acc / 10:.3f}, test acc: {test_acc / 10:.3f}')
         sys.stdout = original_stdout
 
 
 class CLNetwork:
     def __init__(self, args):
         self.args = args
-        if args.model_volume == 'standard':
+        if args.using_saved_network:
+            print('using saved network.')
+            self.net = SeqSleepNet()
+            self.net.load_state_dict(torch.load('saved_network.pt'))
+        elif args.model_volume == 'standard':
             print('using standard network.')
             self.net = copy.deepcopy(standard_network)
         elif args.model_volume == 'tiny':
@@ -221,7 +225,7 @@ class CLNetwork:
         self.train_loss /= self.num_samples
         self.train_acc /= self.num_samples
         valid_acc = evaluate(self.net, valid_iter, self.device)
-        if valid_acc > self.best_valid_acc:
+        if valid_acc > self.best_valid_acc and self.epoch >= self.args.num_epochs // 2:
             self.best_train_loss = self.train_loss
             self.best_train_acc = self.train_acc
             self.best_valid_acc = valid_acc
@@ -320,16 +324,17 @@ if __name__ == '__main__':
     parser.add_argument('--num_epochs', type=int, nargs='?', default=100)
     parser.add_argument('--batch_size', type=int, nargs='?', default=32)
     parser.add_argument('--window_size', type=int, nargs='?', default=10)
-    parser.add_argument('--lr', type=float, nargs='?', default=1e-4)
+    parser.add_argument('--lr', type=float, nargs='?', default=3e-4)
     parser.add_argument('--weight_decay', type=float, nargs='?', default=1e-5)
     parser.add_argument('--channel', type=str, nargs='?', default='F3_A2')
     parser.add_argument('--buffer_size', type=int, nargs='?', default=64)
-    parser.add_argument('--phase', type=int, nargs='?', default=1)
+    parser.add_argument('--phase', type=int, nargs='?', default=3)
     parser.add_argument('--replay_mode', type=str, nargs='?', default='naive')
     parser.add_argument('--model_volume', type=str, nargs='?', default='standard')
     parser.add_argument('--ewc_coef', type=float, nargs='?', default=1e-3)
     parser.add_argument('--mc_epochs', type=int, nargs='?', default=10)
     parser.add_argument('--clops_ratio', type=int, nargs='?', default=3)
+    parser.add_argument('--using_saved_network', type=bool, default=True)
     args = parser.parse_args()
     if args.phase == 0:
         results = k_fold_train(args)
@@ -357,3 +362,16 @@ if __name__ == '__main__':
         args.replay_mode = 'none'
         R = train_cl(args, continuum)
         write_format(R, continuum, 'cl_output_none_replay.txt')
+    elif args.phase == 3:
+        if args.replay_mode == 'clops':
+            args.num_epochs = args.num_epochs // 5
+        R_sum, continuum = None, None
+        for test_idx in range(1, 11):
+            continuum = Continuum(test_idx=test_idx)
+            R = train_cl(args, continuum)
+            if R_sum is None:
+                R_sum = R.clone()
+            else:
+                R_sum += R
+        write_format(R_sum / 10, continuum, 'cl_output_' + args.replay_mode + '_k_fold.txt')
+

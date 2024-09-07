@@ -37,7 +37,12 @@ tiny_network.apply(init_weight)
 class CLNetworkClops:
     def __init__(self, args):
         self.args = args
-        if args.model_volume == 'standard':
+        if args.using_saved_network:
+            print('using saved network')
+            seqsleepnet = SeqSleepNet()
+            seqsleepnet.load_state_dict(torch.load('saved_network.pt'))
+            self.net = SeqSleepNetClops(seqsleepnet, args.batch_size)
+        elif args.model_volume == 'standard':
             print('using standard network.')
             self.net = SeqSleepNetClops(copy.deepcopy(standard_network), args.batch_size)
         elif args.model_volume == 'tiny':

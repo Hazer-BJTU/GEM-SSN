@@ -2,6 +2,7 @@ import numpy as np
 from numpy import random
 import quadprog
 from models import SeqSleepNet, TinySeqSleepNet
+from models import init_weight
 import torch
 import torch.nn as nn
 
@@ -19,4 +20,6 @@ class Model(nn.Module):
 
 
 if __name__ == '__main__':
-    pass
+    net = SeqSleepNet()
+    net.apply(init_weight)
+    torch.save(net.state_dict(), 'saved_network.pt')
