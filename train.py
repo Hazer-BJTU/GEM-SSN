@@ -141,6 +141,7 @@ class CLNetwork:
         '''
         EWC parameters:
         '''
+        self.total_observed_samples = 0
         self.fisher = []
         self.fisher_memory = []
 
@@ -165,6 +166,7 @@ class CLNetwork:
         initialize EWC parameters
         '''
         if args.replay_mode == 'ewc':
+            self.total_observed_samples = 0
             self.fisher = []
             for param in self.net.parameters():
                 self.fisher.append(torch.zeros(param.data.shape, device=self.device, requires_grad=False))
@@ -210,6 +212,7 @@ class CLNetwork:
         EWC calculate fisher information matrix diagonal
         '''
         if self.args.replay_mode == 'ewc':
+            self.total_observed_samples += X.shape[0]
             param_idx = 0
             print(f'calculating FIM...')
             for param in self.net.parameters():
@@ -241,6 +244,8 @@ class CLNetwork:
         store the fisher information matrix diagonal
         '''
         if self.args.replay_mode == 'ewc':
+            for grads in self.fisher:
+                grads /= self.total_observed_samples
             self.fisher_memory.append(self.fisher)
             '''
             print('FIM')
@@ -331,7 +336,7 @@ if __name__ == '__main__':
     parser.add_argument('--phase', type=int, nargs='?', default=3)
     parser.add_argument('--replay_mode', type=str, nargs='?', default='naive')
     parser.add_argument('--model_volume', type=str, nargs='?', default='standard')
-    parser.add_argument('--ewc_coef', type=float, nargs='?', default=1e-3)
+    parser.add_argument('--ewc_coef', type=float, nargs='?', default=1)
     parser.add_argument('--mc_epochs', type=int, nargs='?', default=10)
     parser.add_argument('--clops_ratio', type=int, nargs='?', default=3)
     parser.add_argument('--using_saved_network', type=bool, default=True)
